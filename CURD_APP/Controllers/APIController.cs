@@ -17,7 +17,7 @@ namespace CURD_APP.Controllers
         {
             _db = db;
         }
-        //[Authorize]
+        [Authorize]
         [HttpGet]
         public ActionResult<List<Model1>> getItems()
         {
