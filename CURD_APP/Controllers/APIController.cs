@@ -1,7 +1,9 @@
 ﻿using CURD_APP.Data;
 using CURD_APP.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 //namespace keyword is used to declare a scope that contains a set of related objects. 
 namespace CURD_APP.Controllers
 {
@@ -15,96 +17,107 @@ namespace CURD_APP.Controllers
         {
             _db = db;
         }
+        //[Authorize]
         [HttpGet]
         public ActionResult<List<Model1>> getItems()
         {
             List<Model1> items = _db.Dish.ToList();
-            return Ok(items);
+            return Ok(new Response<List<Model1>>("Items retrieved successfully.", items));
         }
+        //[Authorize]
         [HttpGet("{id:int}")]
         public ActionResult<Model1> getItem(int? id)
         {
-            if (id == null)
+            if (id == null || !ModelState.IsValid)
             {
-                return BadRequest();
+                return BadRequest("Please Provide Valid ID.");
             }
             Model1 item = _db.Dish.FirstOrDefault(u => u.Id == id);
 
             if (item == null)
             {
-                return NotFound();
+                return NotFound("Given ID is not present in Database");
             }
 
-            return Ok(item);
+            return Ok(new Response<Model1>("Item retrieved successfully.", item));
         }
-
+        //[Authorize]
         [HttpDelete("{id:int}")]
         public IActionResult DeleteItem(int? id)
         {
             if(id==null)
             {
-                return BadRequest();
+                return BadRequest("Please Provide Valid ID.");
             }
             Model1 item = _db.Dish.FirstOrDefault(u => u.Id == id);
 
             if (item==null)
             {
-                return NotFound();
+                return NotFound("Given ID is not present in Database");
             }
             _db.Dish.Remove(item);
             _db.SaveChanges();
-            return Ok(item);
-        }
 
+            return Ok(new Response<Model1>("Item deleted successfully.", item));
+        }
+        //[Authorize]
         [HttpPost]
         public IActionResult CreateItem([FromBody]Model1 obj)
         {
             if(!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest("Please Provide Valid Item values");
             }
             if (obj.Id>0)
             {
-                return BadRequest();
+                return BadRequest("Please do not Give ID");
             }
-            //List<Model1> list = _db.Dish.ToList();
-            //if (list.Count == 0)
-            //{
-            //    obj.Id = 1;
-            //}
-            //else
-            //{
-            //    int largestId = list.OrderByDescending(item => item.Id).Select(item => item.Id).FirstOrDefault();
-            //    obj.Id = largestId + 1; 
-            //}
             _db.Dish.Add(obj);
             _db.SaveChanges();
 
-            return Ok(obj);
+            return Ok(new Response<Model1>("Item created successfully.", obj));
         }
-
-        [HttpPut]
-        public IActionResult UpdateItem(int? id,[FromBody] Model1 obj)
+        //[Authorize]
+        [HttpPut("update/{id:int}")]
+        public IActionResult UpdateItem(int? id, [FromBody] Model1 obj)
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState);
+                return BadRequest("Please Provide Valid set of values to Update");
             }
-            if (id==null)
+            if (id == null)
             {
-                return BadRequest();
-            }
-      
-            Model1 item=_db.Dish.FirstOrDefault(u=>u.Id == id);
-            if(item==null)
-            {
-                return NotFound();
+                return BadRequest("ID is Inappropriate");
             }
 
-            item=
+            Model1 item = _db.Dish.FirstOrDefault(u => u.Id == id);
 
-            return Ok(obj);
+            if (item == null)
+            {
+                return NotFound("Given Item is not present to get Updated");
+            }
+            _db.Entry(item).State = EntityState.Detached;
+            _db.Dish.Update(obj);
+            if (!ModelState.IsValid)
+            {
+                return BadRequest("Please Provide Valid set of values to Update");
+            }
+
+            _db.SaveChanges();
+
+            return Ok(new Response<Model1>("Item updated successfully.",obj));
         }
-
+    }
+    public class Response<T>
+    {
+        public string Message { get; set; }
+        public T Data { get; set; }
+        
+        public Response(string message, T data)
+        {
+            
+            Message = message;
+            Data = data;
+        }
     }
 }
